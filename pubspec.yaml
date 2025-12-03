@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.2
+  sdk: ^3.10.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -42,7 +42,7 @@ dependencies:
   path: ^1.9.1
   # profe aqui se intento actualizar la libreria pero arrojaba el siguiente mensaje Because playoor depends on sqflite_common_ffi >=2.4.0 which requires SDK version ^3.10.0-0, version solving failed.
   # como la unica opcion aqui que encontramos seria migrar el proyecto a otro SDK mas nuevo decidimos dejarlo en la 2.3.0.
-  sqflite_common_ffi: ^2.3.0
+  sqflite_common_ffi: ^2.4.0
 
   # añadido para arquitectura BLoC y menú animado (slider drawer)
   flutter_bloc: ^9.1.1

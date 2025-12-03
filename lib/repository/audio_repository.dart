@@ -39,7 +39,6 @@ class AudioRepository {
   Future<void> insertInitialSongs(List<AudioItem> songs) async {
     final db = await database;
 
-    // Verificamos si la tabla tiene al menos un registro
     final count = Sqflite.firstIntValue(
         await db.rawQuery('SELECT COUNT(*) FROM audioitem'));
 

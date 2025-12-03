@@ -1,11 +1,10 @@
-// botonera.dart
 import 'package:flutter/material.dart';
 
 class Botonera extends StatelessWidget {
   final VoidCallback play, next, previous;
   final bool playing;
   final Duration position, duration;
-  final double progressPorcent; // ya no se usa para UI, pero lo dejamos si lo ocupas
+  final double progressPorcent;
   final Color color;
 
   const Botonera({
@@ -47,7 +46,6 @@ class Botonera extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // fila de botones
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

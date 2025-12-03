@@ -6,7 +6,11 @@ import 'package:playoor/widgets/swiper.dart';
 import '../model/audio_item.dart';
 import 'artist.dart';
 import 'botonera.dart';
-import 'player_cubit.dart';
+
+import '../bloc/player/player_bloc.dart';
+import '../bloc/player/player_event.dart';
+import '../bloc/player/player_state.dart';
+
 import '../bloc/audio_bloc.dart';
 import '../bloc/audio_event.dart';
 import '../bloc/audio_state.dart';
@@ -36,26 +40,42 @@ class _PlayerState extends State<Player> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<PlayerCubit, PlayerStateX>(
+    return BlocListener<PlayerBloc, PlayerState>(
         listenWhen: (prev, curr) => prev.index != curr.index,
-        listener: (_, s) {
+        listener: (context, s) {
           final audioState = context.read<AudioBloc>().state;
 
           if (audioState is! AudioLoaded) return;
 
           final realLength = audioState.audioList.length;
-          if (realLength == 0) return;
+          if (realLength == 0 || !_pageController.hasClients) return;
 
-          final int virtualOffset = (_virtualCount ~/ 2) - ((_virtualCount ~/ 2) % realLength);
-          final targetVirtualPage = virtualOffset + s.index;
+
+          final currentPage = _pageController.page!.round();
+
+          final cycleStartPage = currentPage - (currentPage % realLength);
+
+          final targetVirtualPage = cycleStartPage + s.index;
+
+
+          final List<int> candidates = [
+            targetVirtualPage,
+            targetVirtualPage - realLength,
+            targetVirtualPage + realLength,
+          ];
+
+          final int closestVirtualPage = candidates.reduce(
+                (a, b) => (a - currentPage).abs() < (b - currentPage).abs() ? a : b,
+          );
+
 
           _pageController.animateToPage(
-            targetVirtualPage,
+            closestVirtualPage,
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
           );
         },
-        child: BlocBuilder<PlayerCubit, PlayerStateX>(
+        child: BlocBuilder<PlayerBloc, PlayerState>(
           builder: (context, s) {
             final title = s.current?.title ?? '';
             final artist = s.current?.artist ?? '';
@@ -80,7 +100,7 @@ class _PlayerState extends State<Player> {
                           } else if (audioState is AudioLoaded) {
                             final audioList = audioState.audioList;
 
-                            context.read<PlayerCubit>().load(audioList, start: 0);
+                            context.read<PlayerBloc>().add(PlayerLoadRequested(audioList, start: 0));
 
                             if (!_isPageControllerInitialized && audioList.isNotEmpty) {
                               final realLength = audioList.length;
@@ -102,7 +122,7 @@ class _PlayerState extends State<Player> {
                               pageController: _pageController,
                               audioList: audioList,
                               currentIndex: s.index,
-                              onpageChange: (i) => context.read<PlayerCubit>().setIndex(i),
+                              onpageChange: (i) => context.read<PlayerBloc>().add(PlayerSetIndexRequested(i)),
                               color: _accent,
                             );
                           } else if (audioState is AudioError) {
@@ -116,13 +136,13 @@ class _PlayerState extends State<Player> {
                       ProgressSlider(
                         position: s.position,
                         duration: s.duration,
-                        seek: (d) => context.read<PlayerCubit>().seek(d),
+                        seek: (d) => context.read<PlayerBloc>().add(PlayerSeekRequested(d)),
                         color: _accent,
                       ),
                       Botonera(
-                        play: () => context.read<PlayerCubit>().toggle(),
-                        next: () => context.read<PlayerCubit>().next(),
-                        previous: () => context.read<PlayerCubit>().prev(),
+                        play: () => context.read<PlayerBloc>().add(PlayerToggleRequested()),
+                        next: () => context.read<PlayerBloc>().add(PlayerNextRequested()),
+                        previous: () => context.read<PlayerBloc>().add(PlayerPrevRequested()),
                         playing: s.isPlaying,
                         position: s.position,
                         duration: s.duration,
@@ -138,7 +158,7 @@ class _PlayerState extends State<Player> {
         ));
   }
 
-  void _openSettings(BuildContext context, PlayerStateX s) {
+  void _openSettings(BuildContext context, PlayerState s) {
     final audioList = context.read<AudioBloc>().state is AudioLoaded
         ? (context.read<AudioBloc>().state as AudioLoaded).audioList
         : <AudioItem>[];
@@ -172,7 +192,7 @@ class _PlayerState extends State<Player> {
                   min: 0, max: 1,
                   onChanged: (v) {
                     setModal(() => vol = v);
-                    context.read<PlayerCubit>().setVolume(v);
+                    context.read<PlayerBloc>().add(PlayerSetVolumeRequested(v));
                   },
                 ),
                 const SizedBox(height: 8),
@@ -183,7 +203,7 @@ class _PlayerState extends State<Player> {
                   label: '${rate.toStringAsFixed(2)}x',
                   onChanged: (r) {
                     setModal(() => rate = r);
-                    context.read<PlayerCubit>().setRate(r);
+                    context.read<PlayerBloc>().add(PlayerSetRateRequested(r));
                   },
                 ),
                 const SizedBox(height: 12),
@@ -210,9 +230,9 @@ class _ModalControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<PlayerCubit, PlayerStateX>(
+    return BlocBuilder<PlayerBloc, PlayerState>(
       builder: (context, state) {
-        final playerCubit = context.read<PlayerCubit>();
+        final playerBloc = context.read<PlayerBloc>();
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -221,7 +241,7 @@ class _ModalControls extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.skip_previous, size: 40, color: Colors.white70),
-                onPressed: audioList.isEmpty ? null : () => playerCubit.prev(),
+                onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerPrevRequested()),
               ),
               IconButton(
                 icon: Icon(
@@ -229,11 +249,11 @@ class _ModalControls extends StatelessWidget {
                   size: 60,
                   color: Theme.of(context).colorScheme.secondary,
                 ),
-                onPressed: audioList.isEmpty ? null : () => playerCubit.toggle(),
+                onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerToggleRequested()),
               ),
               IconButton(
                 icon: const Icon(Icons.skip_next, size: 40, color: Colors.white70),
-                onPressed: audioList.isEmpty ? null : () => playerCubit.next(),
+                onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerNextRequested()),
               ),
             ],
           ),
@@ -244,7 +264,7 @@ class _ModalControls extends StatelessWidget {
 }
 
 class _Info extends StatelessWidget {
-  final PlayerStateX s;
+  final PlayerState s;
   const _Info({required this.s});
 
   String _fmt(Duration d) {

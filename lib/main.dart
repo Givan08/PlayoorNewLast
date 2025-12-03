@@ -4,9 +4,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'bloc/audio_bloc.dart';
 import 'bloc/audio_event.dart';
 import 'repository/audio_repository.dart';
-import 'widgets/player.dart';
 import 'widgets/app.dart';
-import 'widgets/player_cubit.dart';
+import 'bloc/player/player_bloc.dart';
 import 'model/audio_item.dart';
 
 final List<AudioItem> initialSongs = [
@@ -41,7 +40,7 @@ void main() async {
               ..add(LoadAudioFromDatabase()),
           ),
           BlocProvider(
-            create: (_) => PlayerCubit(),
+            create: (_) => PlayerBloc(),
           ),
         ],
         child: const App(),

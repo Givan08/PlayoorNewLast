@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slider_drawer/flutter_slider_drawer.dart';
 
+import '../bloc/player/player_event.dart';
+import '../bloc/player/player_state.dart';
 import 'player.dart';
-import 'player_cubit.dart';
+import '../bloc/player/player_bloc.dart';
 
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
@@ -41,7 +43,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => PlayerCubit(),
+      create: (_) => PlayerBloc(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: "Playoor",
@@ -101,7 +103,6 @@ class _MenuLateral extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ⚠️ Necesitas acceder al PlayerCubit y AudioBloc aquí para los botones
     return Material(
       color: const Color(0xff1e1e2c),
       child: SafeArea(
@@ -114,16 +115,12 @@ class _MenuLateral extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // --------------------------------------------------
-            // 🎶 CONTROLES DE REPRODUCCIÓN (Aquí se agregan los botones)
-            // --------------------------------------------------
-            BlocBuilder<PlayerCubit, PlayerStateX>(
+            BlocBuilder<PlayerBloc, PlayerState>(
               builder: (context, state) {
-                final playerCubit = context.read<PlayerCubit>();
+                final playerBloc = context.read<PlayerBloc>();
 
-                // ⚠️ Nota: Necesitas el AudioBloc para saber si hay canciones cargadas.
-                // Usaremos un try/catch simple o asumiremos que el Cubit ya tiene la lista.
-                final audioList = playerCubit.state.list;
+
+                final audioList = state.list;
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -132,29 +129,24 @@ class _MenuLateral extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.skip_previous, size: 30, color: Colors.white70),
-                        onPressed: audioList.isEmpty ? null : () => playerCubit.prev(),
-                      ),
+                        onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerPrevRequested()),                      ),
                       IconButton(
                         icon: Icon(
                           state.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
                           size: 50,
-                          // Usar un color que contraste (ej. el color de acento del Player)
                           color: const Color(0xffda1cd2),
                         ),
-                        onPressed: audioList.isEmpty ? null : () => playerCubit.toggle(),
-                      ),
+                        onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerToggleRequested()),                      ),
                       IconButton(
                         icon: const Icon(Icons.skip_next, size: 30, color: Colors.white70),
-                        onPressed: audioList.isEmpty ? null : () => playerCubit.next(),
-                      ),
+                        onPressed: audioList.isEmpty ? null : () => playerBloc.add(PlayerNextRequested()),                      ),
                     ],
                   ),
                 );
               },
             ),
-            const Divider(color: Colors.white54), // Separador
+            const Divider(color: Colors.white54),
 
-            // Elementos de navegación
             const ListTile(
               leading: Icon(Icons.library_music),
               title: Text('Biblioteca'),
